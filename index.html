@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hospital Appointment</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+  <form id="apptForm">
+    <h2>Book Appointment</h2>
+    <input type="text" name="name" placeholder="Name" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <input type="text" name="phone" placeholder="Phone" required>
+    <select name="department" required>
+      <option value="">Select Department</option>
+      <option value="Cardiology">Cardiology</option>
+      <option value="Ortho">Ortho</option>
+      <option value="General">General</option>
+    </select>
+    <input type="date" name="date" required>
+    <input type="time" name="time" required>
+    <textarea name="message" placeholder="Message (optional)"></textarea>
+    <button type="submit">Book Appointment</button>
+  </form>
+
+  <script>
+  document.getElementById('apptForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const form = e.target;
+    const data = {
+      name: form.name.value,
+      email: form.email.value,
+      phone: form.phone.value,
+      department: form.department.value,
+      date: form.date.value,
+      time: form.time.value,
+      message: form.message.value
+    };
+
+    try {
+      const res = await fetch('http://localhost:8000/appointments', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const j = await res.json();
+        if (j.status === 'success') {
+          alert('Appointment booked successfully!');
+          form.reset();
+        } else {
+          alert('Error: ' + (j.detail || 'Unknown'));
+        }
+      } else {
+        const text = await res.text();
+        alert('Request failed: ' + text);
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  });
+  </script>
+</body>
+</html>
