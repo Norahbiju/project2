@@ -1,18 +1,25 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import pymysql
+import os
+from dotenv import load_dotenv
 
-host = "localhost"
-user = "root"
-password = ""
-database = "hospital"
+# Load environment variables from a .env file (if present)
+load_dotenv()
+
+# Database configuration via environment variables for deployment friendliness
+host = os.getenv("DB_HOST")
+user = os.getenv("DB_USER", "root")
+password = os.getenv("DB_PASSWORD", "")
+database = os.getenv("DB_NAME", "hospital")
+port = int(os.getenv("DB_PORT", 3306))
 
 app = FastAPI()
 
 
 def ensure_database_and_table():
     # connect without specifying database to create it if needed
-    conn = pymysql.connect(host=host, user=user, password=password, cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=host, user=user, password=password, port=port, cursorclass=pymysql.cursors.DictCursor)
     try:
         with conn.cursor() as cur:
             cur.execute(f"CREATE DATABASE IF NOT EXISTS {database}")
@@ -21,7 +28,7 @@ def ensure_database_and_table():
         conn.close()
 
     # connect to the database and ensure table exists
-    conn = pymysql.connect(host=host, user=user, password=password, database=database, cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=host, user=user, password=password, database=database, port=port, cursorclass=pymysql.cursors.DictCursor)
     try:
         with conn.cursor() as cur:
             cur.execute(
@@ -45,6 +52,10 @@ def ensure_database_and_table():
 
 @app.on_event("startup")
 def on_startup():
+    # Fail fast if DB_HOST is not configured — prevents accidental localhost usage in deployments
+    if not host:
+        raise RuntimeError("DB_HOST environment variable is not set. Set DB_HOST to your private subnet DB endpoint.")
+
     try:
         ensure_database_and_table()
     except Exception as e:
@@ -64,7 +75,7 @@ class Appointment(BaseModel):
 
 @app.post("/appointments")
 def create_appointment(a: Appointment):
-    conn = pymysql.connect(host=host, user=user, password=password, database=database, cursorclass=pymysql.cursors.DictCursor)
+    conn = pymysql.connect(host=host, user=user, password=password, database=database, port=port, cursorclass=pymysql.cursors.DictCursor)
     try:
         with conn.cursor() as cur:
             sql = "INSERT INTO appointments (name,email,phone,date,time,department,message) VALUES (%s,%s,%s,%s,%s,%s,%s)"
